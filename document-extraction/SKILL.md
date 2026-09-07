@@ -19,6 +19,7 @@ Treat it as `<root>` verbatim — never search for or re-derive it. The shared-m
 2. If PRESENT, **actually fetch it** via your bound document tool (e.g. `confluence_get_page` by page id, or title +
    space key). Reporting success without fetching is forbidden. A failed fetch is `PARTIAL` with the error verbatim.
 3. Normalise the retrieved content into the solution model below — capture what the document states, do not invent.
+4. Capture any "reference implementation" section into `references[]` verbatim — the in-repo location(s) and what each teaches. Record the pointer only; do not read or normalise the referenced code (a later analysis stage does that).
 
 ## Output schema (`payload`)
 ```json
@@ -29,7 +30,12 @@ Treat it as `<root>` verbatim — never search for or re-derive it. The shared-m
   "namingConventions": [ "<pattern as stated>" ],
   "diagrams": [ { "kind": "mermaid|text", "content": "<verbatim>" } ],
   "constraints": [ "<config-driven / no-hardcode / scope as stated>" ],
-  "openQuestions": [ ]
+  "openQuestions": [ ],
+   "references": [
+      { "location": "<in-repo path / module, as stated>",
+         "kind": "in-repo-path",
+         "whatToLearn": "<structure / naming / config / IAM / testing … as stated>" }
+   ]
 }
 ```
 

@@ -15,11 +15,12 @@ Treat it as `<root>` verbatim — never search for or re-derive it. The shared-m
 `workflow_output`). Read inputs with `read_file`; write outputs with `write_file`. Never pass state through chat.
 
 ## Procedure
-1. Explore `<root>/src`: locate reference implementations, config loaders, type definitions, and existing tests.
-2. Extract the reusable patterns: how constructs are created and organised; how names are templated; how
+1. Read `<root>/workflow_output/00-inputs/solution-model.json`. If it has `references[]`, resolve each `location` under `<root>/src` and study those modules first; only if none are given, discover reference implementations across `<root>/src`.
+2. Explore `<root>/src`: locate reference implementations, config loaders, type definitions, and existing tests.
+3. Extract the reusable patterns: how constructs are created and organised; how names are templated; how
    configuration is read; how resources are imported across stacks; how IAM/resource policies are written; how tests
    are structured.
-3. Record each pattern with a concrete example reference (file + brief snippet), not an abstraction only.
+4. Record each pattern with a concrete example reference (file + brief snippet), not an abstraction only.
 
 ## Output schema (`payload`)
 ```json
@@ -37,3 +38,4 @@ task assignment.
 
 ## Verification
 Every pattern cites a real file in `<root>/src`; the build/test tooling is correctly identified. The file parses.
+- The reference implementation is a source of PATTERNS only. Never copy its files, business logic, or resource definitions into generated code — derive the pattern and re-apply it to the actual requirements. Every reported pattern cites a real file under `<root>/src`.
