@@ -1,6 +1,6 @@
 ---
 name: workflow-run-contract
-description: The shared run contract every agent follows: how to use the run root, the by-functionality folder tree, the chunked JSON envelope, and absent-input semantics.
+description: "The shared run contract every agent follows: how to use the run root, the by-functionality folder tree, the chunked JSON envelope, and absent-input semantics."
 version: 1.0.0
 ---
 

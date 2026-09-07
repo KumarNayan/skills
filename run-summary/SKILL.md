@@ -1,6 +1,6 @@
 ---
 name: run-summary
-description: Assemble the final human-readable run summary from every stage folder: what was built, coverage, validation results, and blockers.
+description: "Assemble the final human-readable run summary from every stage folder: what was built, coverage, validation results, and blockers."
 version: 1.0.0
 ---
 
