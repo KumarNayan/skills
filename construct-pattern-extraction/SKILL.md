@@ -1,7 +1,7 @@
 ---
 name: construct-pattern-extraction
-description: Read the target repository and extract the construct, naming, configuration, import, IAM and testing patterns the generated code must imitate.
-version: 1.0.0
+description: "Read the target repository and extract the construct, naming, config, import, IAM and testing patterns the generated code must imitate, and emit a configConvention describing how config files are laid out."
+version: 1.1.0
 ---
 
 # construct-pattern-extraction
@@ -9,35 +9,44 @@ version: 1.0.0
 Learn the repository's house style from its existing/reference implementations so new code matches it. Pre-existing
 code for the same feature is **context, not requirements**.
 
-The workflow's **run root** is handed to you in your task text (the one line printed by *Init Shared Memory*).
-Treat it as `<root>` verbatim — never search for or re-derive it. The shared-memory tree lives at
-`<root>/workflow_output/<stage-folder>/`; the repository checkout lives at `<root>/src` (a sibling, never inside
-`workflow_output`). Read inputs with `read_file`; write outputs with `write_file`. Never pass state through chat.
+The workflow's **run root** is `<root>` (the line printed by *Init Shared Memory*). Read with `read_file`, write with
+`write_file` as valid JSON.
 
 ## Procedure
-1. Read `<root>/workflow_output/00-inputs/solution-model.json`. If it has `references[]`, resolve each `location` under `<root>/src` and study those modules first; only if none are given, discover reference implementations across `<root>/src`.
-2. Explore `<root>/src`: locate reference implementations, config loaders, type definitions, and existing tests.
-3. Extract the reusable patterns: how constructs are created and organised; how names are templated; how
-   configuration is read; how resources are imported across stacks; how IAM/resource policies are written; how tests
-   are structured.
-4. Record each pattern with a concrete example reference (file + brief snippet), not an abstraction only.
-5. Config-driven stacks: record BOTH the reader + typed BuildConfig interface AND the per-environment config DATA files at `src/config/stacks/{environment}/{StackName}/live.yml` (and `dark.yml` where present). The data files are part of the pattern, not just the reader.
+1. Read `<root>/workflow_output/00-inputs/solution-model.json`. If it lists `references[]`, resolve each in-repo path
+   under `<root>/src` and study those modules first; otherwise discover reference implementations across `<root>/src`.
+2. Extract the reusable patterns — construct creation/organisation, naming, config loading, cross-stack imports,
+   IAM/resource policies, testing — each with a concrete `file:` citation.
+3. Express **every** path repo-relative from the checkout root, preserving the `src/` prefix exactly as the file
+   citations show. Never strip `src/` in the layout summary.
+4. Emit a **`configConvention`** object describing HOW config files are laid out — the *form* only, never a concrete
+   environment:
+   - `pathTemplate`: the repo's physical config location, WITH `src/`, using `<environment>/<StackName>/<env_type>`
+     placeholders as the repo shows (take the physical prefix from the actual repo — the reference document's diagram
+     may omit `src/`; the repo is authoritative).
+   - `envTypes`: the environment types the reference uses (e.g. `live`, `dark`).
+   - `loaderReadPath`: the loader's read string verbatim (CWD-relative, may omit `src/`). The file is CREATED at
+     `pathTemplate` and READ via `loaderReadPath` — never conflate the two.
+   - `schema`: required keys, common keys, and the resource-group shape the config files follow.
 
 ## Output schema (`payload`)
 ```json
 {
-  "structure": { "buildTool": "", "testTool": "", "layout": [ "" ] },
-  "patterns": [
-    { "aspect": "construct|naming|config|import|iam|testing", "rule": "", "example": { "file": "", "snippet": "" } }
-  ]
+  "structure": { "buildTool": "", "testTool": "", "layout": [ "src/..." ] },
+  "patterns": [ { "aspect": "construct|naming|config|import|iam|testing", "rule": "", "example": { "file": "src/...", "snippet": "" } } ],
+  "configConvention": {
+    "pathTemplate": "src/config/stacks/<environment>/<StackName>/<env_type>.yml",
+    "envTypes": [ "live", "dark" ],
+    "loaderReadPath": "./config/stacks/<environment>/<StackName>/<env_type>.yml",
+    "schema": { "required": [ "StackName", "Environment", "Common" ], "common": [ "AWS_REGION", "AWS_ACCOUNT" ], "resourceBlocks": "groups[]{name,shouldProvision,metadata}" }
+  }
 }
 ```
 
 ## Output location
-`<root>/workflow_output/10-analysis/reference-patterns.json` and/or `repo-conventions.json` (envelope), per your
-task assignment.
+`<root>/workflow_output/10-analysis/reference-patterns.json` (envelope).
 
 ## Verification
-Every pattern cites a real file in `<root>/src`; the build/test tooling is correctly identified. The file parses.
-The reference implementation is a source of PATTERNS only. Never copy its files, business logic, or resource definitions into generated code — derive the pattern and re-apply it to the actual requirements. Every reported pattern cites a real file under `<root>/src`.
-Report all paths repo-relative WITH the src/ prefix exactly as the file evidence shows; never normalize src/ away. For config, capture fileLocation (src/config/stacks/<environment>/<StackName>/<env_type>.yml) separately from the loader's runtimeReadPath (./config/stacks/...). They point at the same file but are not interchangeable.
+Every pattern cites a real file under `<root>/src`; all reported paths keep the repo's `src/` prefix;
+`configConvention.pathTemplate` is physical (with `src/`) and distinct from `loaderReadPath`; `configConvention`
+contains no concrete environment (only placeholders). The file parses.
