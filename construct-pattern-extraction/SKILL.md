@@ -39,4 +39,5 @@ task assignment.
 
 ## Verification
 Every pattern cites a real file in `<root>/src`; the build/test tooling is correctly identified. The file parses.
-- The reference implementation is a source of PATTERNS only. Never copy its files, business logic, or resource definitions into generated code — derive the pattern and re-apply it to the actual requirements. Every reported pattern cites a real file under `<root>/src`.
+The reference implementation is a source of PATTERNS only. Never copy its files, business logic, or resource definitions into generated code — derive the pattern and re-apply it to the actual requirements. Every reported pattern cites a real file under `<root>/src`.
+Report all paths repo-relative WITH the src/ prefix exactly as the file evidence shows; never normalize src/ away. For config, capture fileLocation (src/config/stacks/<environment>/<StackName>/<env_type>.yml) separately from the loader's runtimeReadPath (./config/stacks/...). They point at the same file but are not interchangeable.
