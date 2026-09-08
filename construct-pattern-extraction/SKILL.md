@@ -21,6 +21,7 @@ Treat it as `<root>` verbatim — never search for or re-derive it. The shared-m
    configuration is read; how resources are imported across stacks; how IAM/resource policies are written; how tests
    are structured.
 4. Record each pattern with a concrete example reference (file + brief snippet), not an abstraction only.
+5. Config-driven stacks: record BOTH the reader + typed BuildConfig interface AND the per-environment config DATA files at `src/config/stacks/{environment}/{StackName}/live.yml` (and `dark.yml` where present). The data files are part of the pattern, not just the reader.
 
 ## Output schema (`payload`)
 ```json

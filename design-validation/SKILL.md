@@ -18,6 +18,7 @@ Treat it as `<root>` verbatim — never search for or re-derive it. The shared-m
 2. For each requirement, confirm a design chunk covers it (resource, wiring, IAM, tests planned).
 3. For each design chunk, confirm it conforms to the reference patterns and stated constraints.
 4. Record uncovered requirements and non-conformances as findings with a severity.
+5. For each config-driven stack, assert a per-environment config file exists in the file map for every target environment. Missing config data file → HIGH finding, `conformant=false`.
 
 ## Output schema (`payload`)
 ```json
@@ -33,3 +34,4 @@ Treat it as `<root>` verbatim — never search for or re-derive it. The shared-m
 
 ## Verification
 Every requirement appears in `coverage`; `conformant` is false if any high finding exists. The file parses.
+For each config-driven stack, assert a per-environment config file exists in the file map for every target environment. Missing config data file → HIGH finding, `conformant=false`.

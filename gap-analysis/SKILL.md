@@ -17,6 +17,7 @@ Treat it as `<root>` verbatim — never search for or re-derive it. The shared-m
 1. Read requirement chunks and the design + design-validation chunks.
 2. Compute the gap set: requirements without adequate design coverage, plus any high-severity design findings.
 3. Decide `needsReview`: true if any material (high) gap remains, else false.
+4. A config-driven stack lacking its per-environment config data file is a HIGH-severity gap: increment `counts.high` (which forces `needsReview=true`).
 
 ## Output schema (`payload`)
 ```json

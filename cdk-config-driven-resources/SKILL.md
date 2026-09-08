@@ -36,3 +36,4 @@ Design: `30-design/`; code under `<root>/src` + chunk in `50-codegen/` (envelope
 ## Verification
 A search of the generated code finds **no** hardcoded resource names/ARNs/env; every configured property in the
 requirements is honoured by the loop; a hypothetical new config entry would be provisioned with no code change.
+A config-driven stack is INCOMPLETE without its per-environment config data files. For every stack × target environment, `src/config/stacks/{env}/{StackName}/live.yml` MUST exist and be populated; the reader and interface alone do not satisfy this. All generated paths live under `src/` (never bare, never `src/src/`).
