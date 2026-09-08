@@ -15,12 +15,14 @@ The workflow's **run root** is `<root>`. Read with `read_file`, write with `writ
 1. Read every chunk in `00-inputs/` and `10-analysis/`.
 2. Enumerate the concrete resources/groups to implement and their configuration, sourced from the solution model and
    issue ACs.
-3. Set `environmentsToGenerate` = the solution model's `targetEnvironments`. Emit a **config-provisioning**
-   requirement listing, for each provisioned stack, the config files that must exist — one per environment in
-   `environmentsToGenerate`, per `env_type` in `configConvention`. Describe them via `configConvention` (path shape),
-   never as a literal path.
-4. If `targetEnvironmentsStated` is false / `environmentsToGenerate` is empty, record it as a **blocking open item**;
-   never default to an invented environment.
+3. Set `environmentsToGenerate` from the solution model's `targetEnvironments` when present; otherwise, if the
+   solution model's constraints enumerate the deployment environments, use that enumerated list verbatim (record its
+   source, e.g. constraints[5]). Emit a **config-provisioning** requirement listing, for each provisioned stack, the
+   config files that must exist — one per environment in `environmentsToGenerate`, per `env_type` in
+   `configConvention`. Describe them via `configConvention` (path shape), never as a literal path.
+4. Record a **blocking open item** only when NO environment list appears anywhere in the solution model (neither
+   `targetEnvironments` nor an enumerated constraint list); never default to an invented environment. A stated
+   constraint list is a valid source, not a blocker.
 5. Emit one chunk per requirement group so downstream design/codegen can parallelise.
 
 ## Output schema (per-group chunk `payload`)

@@ -20,8 +20,7 @@ state through chat.
 3. Normalise the retrieved content into the solution model below — capture what the document states, never invent.
 4. Capture any **reference-implementation** section into `references[]` verbatim (the in-repo path(s)/module(s) and
    what each teaches). Record the pointer only; do not read that code (the analysis stage does).
-5. Capture the **target deployment environment(s)** the document names into `targetEnvironments` (verbatim, concrete
-   names). If none are named, set `targetEnvironments: []` and `targetEnvironmentsStated: false` — never invent one.
+5. Extract the deployment environments the document names — from a dedicated field OR from a constraints/deployment/scope section that enumerates them — into targetEnvironments (verbatim), with targetEnvironmentsStated=true and a source reference. Only [] / false when no environment list appears anywhere.
 
 ## Output schema (`payload`)
 ```json
