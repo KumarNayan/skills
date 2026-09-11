@@ -21,13 +21,18 @@ The workflow's **run root** is `<root>` (the line printed by *Init Shared Memory
    citations show. Never strip `src/` in the layout summary.
 4. Emit a **`configConvention`** object describing HOW config files are laid out — the *form* only, never a concrete
    environment:
-   - `pathTemplate`: the repo's physical config location, WITH `src/`, using `<environment>/<StackName>/<env_type>`
-     placeholders as the repo shows (take the physical prefix from the actual repo — the reference document's diagram
-     may omit `src/`; the repo is authoritative).
-   - `envTypes`: the environment types the reference uses (e.g. `live`, `dark`).
-   - `loaderReadPath`: the loader's read string verbatim (CWD-relative, may omit `src/`). The file is CREATED at
-     `pathTemplate` and READ via `loaderReadPath` — never conflate the two.
-   - `schema`: required keys, common keys, and the resource-group shape the config files follow.
+    - `pathTemplate`: the repo's physical config location, WITH `src/`, using `<environment>/<StackName>/<env_type>`
+      placeholders as the repo shows (take the physical prefix from the actual repo — the reference document's diagram
+      may omit `src/`; the repo is authoritative).
+    - `envTypes`: the environment types the reference uses. **Enumerate the COMPLETE distinct set — never
+      sample.** Read `<root>/workflow_output/10-analysis/config-envtype-census.json` (the deterministic census that
+      globs every `config/stacks/*/*/*.yml`) and copy its `allEnvTypes`, `envTypesByStackType` and `envTypesByStack`.
+      `dark.yml` is SPARSE in the reference (present only for some stacks/environments), so opening one example config
+      file will miss it — a miss here silently drops every `dark.yml` downstream. Carry `envTypesByStack` through so
+      per-stack differences (e.g. persistent stacks that have `dark`, compute stacks that do not) survive.
+    - `loaderReadPath`: the loader's read string verbatim (CWD-relative, may omit `src/`). The file is CREATED at
+      `pathTemplate` and READ via `loaderReadPath` — never conflate the two.
+    - `schema`: required keys, common keys, and the resource-group shape the config files follow.
 
 ## Output schema (`payload`)
 ```json
@@ -37,6 +42,8 @@ The workflow's **run root** is `<root>` (the line printed by *Init Shared Memory
   "configConvention": {
     "pathTemplate": "src/config/stacks/<environment>/<StackName>/<env_type>.yml",
     "envTypes": [ "live", "dark" ],
+    "envTypesByStackType": { "PersistentStack": [ "live", "dark" ], "ComputeStack": [ "live" ] },
+    "envTypesByStack": { "<StackName>": [ "live", "dark" ] },
     "loaderReadPath": "./config/stacks/<environment>/<StackName>/<env_type>.yml",
     "schema": { "required": [ "StackName", "Environment", "Common" ], "common": [ "AWS_REGION", "AWS_ACCOUNT" ], "resourceBlocks": "groups[]{name,shouldProvision,metadata}" }
   }
@@ -49,4 +56,5 @@ The workflow's **run root** is `<root>` (the line printed by *Init Shared Memory
 ## Verification
 Every pattern cites a real file under `<root>/src`; all reported paths keep the repo's `src/` prefix;
 `configConvention.pathTemplate` is physical (with `src/`) and distinct from `loaderReadPath`; `configConvention`
-contains no concrete environment (only placeholders). The file parses.
+contains no concrete environment (only placeholders). `envTypes` equals the census `allEnvTypes` and INCLUDES `dark`
+whenever the census does; `envTypesByStack` is present. The file parses.
