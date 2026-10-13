@@ -1,7 +1,7 @@
 ---
 name: cdk-typescript-correctness
 description: Hard TypeScript/CDK compile-correctness rules every stack, config reader and test must obey — immutable config objects, valid CDK API and enums, guarded optionals, and declared types — so the generated app passes `tsc --noEmit` on the first alignment pass.
-version: 2.2.0
+version: 2.3.0
 ---
 
 # cdk-typescript-correctness
@@ -73,6 +73,29 @@ sibling, never inside `workflow_output`). Read inputs with `read_file`; write ou
    required/optional shape**. If you change the interface, update the reader and the tests in the
    **same pass** — drift here produces `TS2322`/`TS2741`/`TS2540` cascades.
 
+7. **Entrypoint & wiring completeness — infer the stack set from the artifacts, never hardcode.**
+   The authoritative list of stacks to generate and wire is **derived from the pipeline's own
+   outputs**, not from the prompt or memory: read `requiredConfigFiles[].stack` in
+   `<root>/workflow_output/20-requirements/config-provisioning.json` (and the FileMap in
+   `<root>/workflow_output/30-design/`). For **every** stack in that list: (a) its loader must export
+   the deploy function(s), **and** (b) `bin/Main.ts` must `import` that function and contain a
+   `case "<stack name exactly as the artifact spells it>":` that calls it. A stack that appears in the
+   requirements/design but has no `Main.ts` case (or no loader fn) is a defect — add it in the same
+   pass. Never invent, drop, or guess a stack name; take it verbatim from the artifact.
+
+8. **Canonical, convention-correct naming — inferred from requirements/design/analysis.** Do not
+   re-case or re-style any name; derive every identifier and filename from the pipeline's artifacts
+   and the reference repo:
+   - **Identifiers** (stack/construct/class/interface/reader/test-type names): use the **exact
+     spelling and casing** given in `20-requirements`/`30-design` (e.g. the `StackName`/FileMap
+     entries). Never alter case (do not turn a given `Xyz` into `XYZ` or vice-versa) and keep **one**
+     casing across the stack files, interface, reader, config paths, tests, loader and `Main.ts`.
+   - **File/directory style:** follow the repo convention recorded in `<root>/workflow_output/
+     10-analysis/` (conventions / reference-pattern output) and mirror the nearest existing sibling
+     files (how the repo already names `Read*Config.ts`, `*StackLoader.ts`, test files, config dirs).
+   - When unsure, copy the pattern from the reference file identified in `10-analysis`; never invent a
+     new convention.
+
 ## Alignment-loop IO contract (CodeFixAgent / alignment & validation agents)
 The code-alignment loop's control files live under **`<root>/workflow_output/…`** — **never**
 `<root>/<stage>/…`. When you read or write them, always include the `workflow_output/` segment and
@@ -94,7 +117,9 @@ Mentally run `tsc --noEmit` over every file you produced and confirm:
 - every optional access is **guarded**;
 - every CDK prop / enum member **exists in the installed types**;
 - every `import` resolves a **type** (no implicit `any`);
-- interface, reader and tests agree on one shape.
+- interface, reader and tests agree on one shape;
+- every stack in `requiredConfigFiles` has a loader fn AND a `Main.ts` import+case;
+- every identifier/filename matches the artifact's exact casing and the repo's naming convention.
 
 ## Output
 This skill changes **how** you write code; it does not add an output artifact. Emit your normal
@@ -103,4 +128,4 @@ authoring chunk/envelope for your stage. Files go under `<root>/workflow_output/
 ## Verification
 `tsc --noEmit` passes on the files you produced, with **none** of: `TS2540`, `TS2703`, `TS18048`,
 `TS2532`, `TS2345` (`throttle`-on-`StageProps`), `TS2551` (bad `QueueEncryption` member), `TS7016`
-(untyped import).
+(untyped import); every requirements/design stack is wired in `Main.ts`; and all names match the artifacts' casing + the repo convention (no re-cased or invented names).
