@@ -1,7 +1,7 @@
 ---
 name: cdk-typescript-correctness
 description: Hard TypeScript/CDK compile-correctness rules every stack, config reader and test must obey — immutable config objects, valid CDK API and enums, guarded optionals, and declared types — so the generated app passes `tsc --noEmit` on the first alignment pass.
-version: 2.3.0
+version: 2.4.0
 ---
 
 # cdk-typescript-correctness
@@ -47,10 +47,26 @@ sibling, never inside `workflow_output`). Read inputs with `read_file`; write ou
      `addStage`/method settings. If the deployment uses `new apigateway.Stage(...)`, configure
      throttling through its supported `methodOptions`, not an invented `throttle` key.
    - **`QueueEncryption` members (`TS2551`):** use only members the installed `aws-cdk-lib` actually
-     exports (`UNENCRYPTED`, `KMS_MANAGED`, `KMS`, and — only on newer versions — `SQS_MANAGED`). Do
-     not assume `SQS_MANAGED` exists; if unsure, use `QueueEncryption.KMS_MANAGED`.
+     exports (`UNENCRYPTED`, `KMS_MANAGED`, `KMS`, and — only on newer versions — `SQS_MANAGED`).
+     Do not assume `SQS_MANAGED` exists. **But when a missing member is the one the config asks for,
+     do NOT substitute a different member — honour the config via the escape hatch (next bullet).**
+   - **Config-value ↔ CDK-member fidelity — realise what the config says, never a different value.**
+     When config carries an encryption/mode/enum-like value, build the resource so the **synthesised
+     CloudFormation matches that value** — read the value from config, never hardcode it, and map it to
+     the **same-named** CDK member. If the installed `aws-cdk-lib` does **not** export that member
+     (e.g. older libs lack `QueueEncryption.SQS_MANAGED`, `TS2551`), realise the intended CloudFormation
+     property through the repo's **existing L1 escape-hatch convention**
+     `(resource.node.defaultChild as <CfnType>).addPropertyOverride('<CfnProp>', <value>)` — exactly as
+     the repo already does elsewhere (e.g. `stacks/ConfigServiceStack/ConfigServiceStack.ts` uses
+     `CfnFunction.addPropertyOverride`). **Never swap in a different member just to compile** (e.g.
+     `SQS_MANAGED`→`KMS_MANAGED`): it changes the resource's behaviour and breaks the config-faithful
+     test. Worked example — config `encryption: 'SQS_MANAGED'` ⇒ CloudFormation
+     `SqsManagedSseEnabled: true`:
+     - right: `const q = new sqs.Queue(this, id, { /* …no encryption prop… */ }); (q.node.defaultChild as sqs.CfnQueue).addPropertyOverride('SqsManagedSseEnabled', true);`
+     - wrong: `encryption: sqs.QueueEncryption.KMS_MANAGED`  // synthesises KmsMasterKeyId, not SqsManagedSseEnabled
    - General: before using any enum member, static prop, or construct prop, confirm it exists in the
-     installed types (check `node_modules/aws-cdk-lib`); never invent names.
+     installed types (check `node_modules/aws-cdk-lib`); never invent names, and never silently
+     downgrade/substitute a config-requested value to a different one to satisfy the compiler.
 
 5. **Imports of untyped modules (`TS7016`) — match the repo's module style, do NOT add a dependency.**
    An ES import of a module with no bundled types (e.g. `js-yaml`) makes the file implicit-`any` and

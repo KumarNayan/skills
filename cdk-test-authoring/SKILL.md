@@ -1,7 +1,7 @@
 ---
 name: cdk-test-authoring
 description: How to build CDK test fixtures so the test file compiles and stays in lockstep with the stack — whole immutable config objects (vary by spread, never assign readonly), all required fields present, public surface only, and expected values that follow whatever the stack actually emits.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # cdk-test-authoring
@@ -53,16 +53,19 @@ sibling, never inside `workflow_output`). Read inputs with `read_file`; write ou
    helper), so a config change updates both sides at once. Hard-coded expected strings drift from the
    stack and break on the next legitimate change.
 
-6. **Expected template MUST follow whatever the stack actually emits (fix both sides in one pass).**
-   The most common non-compile failure is a true/false mismatch at `hasResourceProperties`: the stack
-   was changed (e.g. an enum the installed `aws-cdk-lib` doesn't export was swapped for a supported
-   one) but the test still asserts the old shape. When you change a stack property, enum, or resource,
-   update the test's expected template in the **same pass**:
-   - If the queue uses `QueueEncryption.KMS_MANAGED` (because the installed `aws-cdk-lib` has no
-     `SQS_MANAGED`), the test must assert the **KMS-managed** shape (`KmsMasterKeyId: 'alias/aws/sqs'`),
-     **not** `SqsManagedSseEnabled: true`. Assert the shape the installed library actually synthesises.
-   - Never leave the stack on one encryption/property and the test asserting another — that cannot
-     converge (stack fix → test fail → test "fix" → stack fail).
+6. **Config is the authority — both stack and test must honour the config value (fix the DEVIATING
+   side, in one pass).** The most common `hasResourceProperties` mismatch is the stack and test
+   disagreeing on an encryption/mode/enum value. The tie-breaker is the **config** (`live.yml`/`dark.yml`
+   under `src/config/stacks/<env>/<Stack>/`), not whichever side is easier to edit. Read the config
+   value and assert the CloudFormation property it implies; if the stack synthesises something else,
+   **fix the stack** (see `cdk-typescript-correctness` rule 4 — realise the config value, via the L1
+   escape hatch if the enum member is missing), do **not** rewrite the test to the stack's wrong output:
+   - config `encryption: 'SQS_MANAGED'` ⇒ assert `SqsManagedSseEnabled: true` **and** ensure the stack
+     emits it (`CfnQueue.addPropertyOverride('SqsManagedSseEnabled', true)`), **never** flip the test to
+     `KmsMasterKeyId` because the stack wrongly used `QueueEncryption.KMS_MANAGED`.
+   - config `encryption: 'KMS_MANAGED'` ⇒ assert `KmsMasterKeyId` and the stack uses
+     `QueueEncryption.KMS_MANAGED`. Match the assertion to the **config's** intent, consistently on both
+     sides — never leave stack and test asserting different encryptions (that cannot converge).
 
 7. **The test file must `tsc --noEmit`-compile before it is useful.** Jest cannot run a suite that
    fails to compile (`Test suite failed to run`), so an uncompilable test is an **unverified** test.
