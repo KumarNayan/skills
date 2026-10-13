@@ -123,7 +123,7 @@ Mentally run `tsc --noEmit` over every file you produced and confirm:
 
 ## Output
 This skill changes **how** you write code; it does not add an output artifact. Emit your normal
-authoring chunk/envelope for your stage. Files go under `<root>/src`.
+authoring chunk/envelope for your stage. Files go under `<root>/workflow_output/`.
 
 ## Verification
 `tsc --noEmit` passes on the files you produced, with **none** of: `TS2540`, `TS2703`, `TS18048`,
