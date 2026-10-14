@@ -7,7 +7,7 @@ description: Shared rules for every agent in the GraphQL API workflow — data-n
 
 ## File contract
 - The run root `<root>` is printed by the Init Shared Memory step. The repository checkout is `<root>/src`. Shared memory is `<root>/workflow_output/<stage>/`.
-- Stages: `00-inputs`, `10-analysis`, `20-requirements`, `30-design`, `40-gaps`, `50-codegen`, `60-validation`, `70-delivery`, `90-summary`; logs go in `logs/<stage>/`.
+- Stages: `00-inputs`, `10-analysis`, `20-requirements`, `30-design`, `40-gaps`, `50-codegen`, `60-validation`, `90-summary`; logs go in `logs/<stage>/`.
 - Every chunk is valid JSON in the envelope `{"schemaVersion":"1.0","stage","agent","status":"OK|PARTIAL|BLOCKED","payload":{…}}`.
 - State passes only through these files. Your final answer is the JSON your step defines, never a prose summary.
 - A worker's success counts only if its file exists on disk and parses.
@@ -19,5 +19,6 @@ description: Shared rules for every agent in the GraphQL API workflow — data-n
 4. **Secrets.** Never put tokens, passwords, keys or account credentials in code, config, scripts, logs or chunks.
 5. **Minimal diffs.** Change only what the design assigns. Do not refactor, reformat or rename unrelated code.
 6. **Standards.** `00-inputs/standards-checklist.json` is authoritative for new code. Cite `STD-n` ids where you apply a rule. When a repo convention conflicts with a rule, the standard wins for new code and the conflict is recorded.
-7. **Honest status.** Report `PARTIAL` or `BLOCKED` with reasons rather than inventing content to look complete.
-8. **Skills first.** Read every attached skill's `SKILL.md` before acting. If a required one is missing, report `BLOCKED` naming it instead of improvising.
+7. **Jira is read-only.** Use Jira only to read the ticket and its acceptance criteria (`jira_get_issue`, `jira_search`, `jira_search_fields`). Never comment on, update, link or transition anything. Confluence is read-only too.
+8. **Honest status.** Report `PARTIAL` or `BLOCKED` with reasons rather than inventing content to look complete.
+9. **Skills first.** Read every attached skill's `SKILL.md` before acting. If a required one is missing, report `BLOCKED` naming it instead of improvising.
