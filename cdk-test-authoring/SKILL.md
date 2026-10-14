@@ -1,7 +1,7 @@
 ---
 name: cdk-test-authoring
-description: How to build CDK test fixtures so the test file compiles and stays in lockstep with the stack — whole immutable config objects (vary by spread, never assign readonly), all required fields present, public surface only, and expected values that follow whatever the stack actually emits.
-version: 1.1.0
+description: How to author CDK tests so they compile and stay in lockstep with the stack — infer the config from the repo's real reader against a real environment (never a fabricated fixture), bind calls/imports to the stack's actual constructor signature and exported names, and derive expected values from the config, not magic literals.
+version: 1.2.0
 ---
 
 # cdk-test-authoring
@@ -22,12 +22,24 @@ sibling, never inside `workflow_output`). Read inputs with `read_file`; write ou
 
 ## Rules (each prevents a specific test-file defect seen in production runs)
 
-1. **Build every fixture as a WHOLE typed object literal from the config interface — never mutate.**
-   The config interfaces declare their fields `readonly`, so assigning a property after construction
-   fails `tsc` with `TS2540`. Construct each fixture in a single object literal typed to the config
-   interface:
-   - right: `const cfg: PaceMessageConfig = { StackName: 'PaceMessageStack', Environment: 'dev', /* …all fields… */ };`
-   - wrong: `const cfg = baseCfg; cfg.Environment = 'qa';`  // TS2540
+1. **INFER the test config from the repo's real reader — do NOT hand-author a fixture literal.** The
+   single biggest source of broken tests is a fabricated `BuildConfig` literal full of guessed values
+   (`Environment: 'test-env'`, made-up `AWS_ACCOUNT`/`AWS_REGION`, invented key names) that drifts from
+   the real interface (`TS2345`/`TS2741`/`TS2540`) and asserts values nothing produces. Instead, obtain
+   the config the way the proven working repo does — **call the repo's actual config reader**:
+   - Discover the reader's **exported name and parameter order** from the clone
+     (`src/utils/**/Read*Config.ts`) — do not assume it; it varies (e.g.
+     `readPaceMessageConfig(environment, stack_name, filename)` or
+     `getPaceMessagePersistentConfig(stack_name, environment, envType)`).
+   - Call it against a **REAL environment** discovered from the clone
+     (`src/config/stacks/<env>/<Stack>/`) and/or `<root>/workflow_output/20-requirements/
+     config-provisioning.json` — **never invent an environment** like `'test-env'`.
+   - right: `const config = getPaceMessagePersistentConfig('PaceMessagePersistentStack', 'apn1nisintegration', envType);`
+   - wrong: `const config: BuildConfig = { Environment: 'test-env', Common: { AWS_REGION: 'us-east-1', AWS_ACCOUNT: '123456789012' }, … };`
+   This guarantees the fixture matches the interface exactly and every value is inferred from the clone's
+   config files, not guessed. **Only** if the unit genuinely takes a plain props object and no reader/
+   config exists, fall back to a hand-built literal — and then build it as a WHOLE typed object literal
+   (never assign after construction → `TS2540`; vary via spread, see rule 2).
 
 2. **To make a variant, SPREAD into a new object — never assign into the base.** Vary one field by
    spreading the base (and any nested group) into a fresh object; never write back to a readonly
@@ -72,6 +84,20 @@ sibling, never inside `workflow_output`). Read inputs with `read_file`; write ou
    Mentally run `tsc` over the fixture and expectations before emitting (see
    `cdk-typescript-correctness` self-check): no writes to `readonly`, no `delete`, optionals guarded,
    every imported name resolves a type, fixtures satisfy the config interface.
+
+8. **Bind to the ACTUAL public surface — read it from the generated source, never assume.** Before any
+   constructor call or import, open the generated **stack** file and read its real
+   `constructor(scope, id, …)` parameter list (count, order, types), and open the **loader/index** and
+   read its real `export` names. Construct and import **exactly** those:
+   - If the constructor is `(scope, id, buildConfig, environment_type: string, props?: cdk.StackProps)`,
+     call `new Stack(app, id, cfg, 'live', { env });` — if it is `(scope, id, buildConfig, props?)`,
+     call `new Stack(app, id, cfg, { env });`. Pass the right number/types of args in the right order.
+   - Import the exact exported identifiers (e.g. `deployPaceMessageStack`), **never** a guessed name
+     (`loadPaceMessageStacks` → `TS2724`).
+   Never assume the standard CDK `(scope, id, props)` shape and never invent an export name — a mismatch
+   is `TS2345`/`TS2554`/`TS2724` and stops the whole suite compiling (→ tests unverified). If the stack's
+   signature or exports look wrong versus the solution, record that as a **STACK** defect for CodeFixAgent
+   — but the test must still compile against the **actual current** signature.
 
 ## Output
 This skill changes **how** you write test fixtures and expectations; it does not add its own output
