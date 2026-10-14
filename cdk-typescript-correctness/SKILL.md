@@ -1,7 +1,7 @@
 ---
 name: cdk-typescript-correctness
 description: Hard TypeScript/CDK compile-correctness rules every stack, config reader and test must obey — immutable config objects, valid CDK API and enums, guarded optionals, and declared types — so the generated app passes `tsc --noEmit` on the first alignment pass.
-version: 2.4.0
+version: 2.5.0
 ---
 
 # cdk-typescript-correctness
@@ -64,9 +64,21 @@ sibling, never inside `workflow_output`). Read inputs with `read_file`; write ou
      `SqsManagedSseEnabled: true`:
      - right: `const q = new sqs.Queue(this, id, { /* …no encryption prop… */ }); (q.node.defaultChild as sqs.CfnQueue).addPropertyOverride('SqsManagedSseEnabled', true);`
      - wrong: `encryption: sqs.QueueEncryption.KMS_MANAGED`  // synthesises KmsMasterKeyId, not SqsManagedSseEnabled
-   - General: before using any enum member, static prop, or construct prop, confirm it exists in the
-     installed types (check `node_modules/aws-cdk-lib`); never invent names, and never silently
-     downgrade/substitute a config-requested value to a different one to satisfy the compiler.
+   - **On ANY uncertainty, check the CLONED REPO — it is the source of truth, not memory and not the
+     compiler's suggestion.** Before choosing an enum member / API / prop, resolve the two questions
+     from the clone:
+     1. **Which aws-cdk version?** Read `<cdir>/node_modules/aws-cdk-lib/package.json` → `version`
+        (fallback `<cdir>/package.json` dependencies). Use **that** installed version's API — never
+        assume a newer one and never add/upgrade a dep mid-loop (Install Dependencies already ran, so a
+        bump won't install and `tsc` stays red).
+     2. **Which members actually exist?** Grep the installed type definitions for the real exports, e.g.
+        `grep -RnE 'SQS_MANAGED|KMS_MANAGED|UNENCRYPTED' node_modules/aws-cdk-lib/aws-sqs/lib/queue.d.ts`
+        (or the relevant `*.d.ts`). Use only members that appear there.
+     Then decide: if the member the **config** asks for exists in the installed version → use it; if it
+     does **not** exist → realise the config's intent via the L1 escape hatch (above), **never** the
+     compiler's "Did you mean 'X'?" suggestion (that proposes the nearest-spelled member, e.g.
+     `KMS_MANAGED` for a missing `SQS_MANAGED`, which is a *different* resource behaviour). Never invent
+     names, and never silently downgrade/substitute a config-requested value to satisfy the compiler.
 
 5. **Imports of untyped modules (`TS7016`) — match the repo's module style, do NOT add a dependency.**
    An ES import of a module with no bundled types (e.g. `js-yaml`) makes the file implicit-`any` and
