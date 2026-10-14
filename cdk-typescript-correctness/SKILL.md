@@ -1,7 +1,7 @@
 ---
 name: cdk-typescript-correctness
 description: Hard TypeScript/CDK compile-correctness rules every stack, config reader and test must obey — immutable config objects, valid CDK API and enums, guarded optionals, and declared types — so the generated app passes `tsc --noEmit` on the first alignment pass.
-version: 2.3.0
+version: 2.5.0
 ---
 
 # cdk-typescript-correctness
@@ -47,10 +47,38 @@ sibling, never inside `workflow_output`). Read inputs with `read_file`; write ou
      `addStage`/method settings. If the deployment uses `new apigateway.Stage(...)`, configure
      throttling through its supported `methodOptions`, not an invented `throttle` key.
    - **`QueueEncryption` members (`TS2551`):** use only members the installed `aws-cdk-lib` actually
-     exports (`UNENCRYPTED`, `KMS_MANAGED`, `KMS`, and — only on newer versions — `SQS_MANAGED`). Do
-     not assume `SQS_MANAGED` exists; if unsure, use `QueueEncryption.KMS_MANAGED`.
-   - General: before using any enum member, static prop, or construct prop, confirm it exists in the
-     installed types (check `node_modules/aws-cdk-lib`); never invent names.
+     exports (`UNENCRYPTED`, `KMS_MANAGED`, `KMS`, and — only on newer versions — `SQS_MANAGED`).
+     Do not assume `SQS_MANAGED` exists. **But when a missing member is the one the config asks for,
+     do NOT substitute a different member — honour the config via the escape hatch (next bullet).**
+   - **Config-value ↔ CDK-member fidelity — realise what the config says, never a different value.**
+     When config carries an encryption/mode/enum-like value, build the resource so the **synthesised
+     CloudFormation matches that value** — read the value from config, never hardcode it, and map it to
+     the **same-named** CDK member. If the installed `aws-cdk-lib` does **not** export that member
+     (e.g. older libs lack `QueueEncryption.SQS_MANAGED`, `TS2551`), realise the intended CloudFormation
+     property through the repo's **existing L1 escape-hatch convention**
+     `(resource.node.defaultChild as <CfnType>).addPropertyOverride('<CfnProp>', <value>)` — exactly as
+     the repo already does elsewhere (e.g. `stacks/ConfigServiceStack/ConfigServiceStack.ts` uses
+     `CfnFunction.addPropertyOverride`). **Never swap in a different member just to compile** (e.g.
+     `SQS_MANAGED`→`KMS_MANAGED`): it changes the resource's behaviour and breaks the config-faithful
+     test. Worked example — config `encryption: 'SQS_MANAGED'` ⇒ CloudFormation
+     `SqsManagedSseEnabled: true`:
+     - right: `const q = new sqs.Queue(this, id, { /* …no encryption prop… */ }); (q.node.defaultChild as sqs.CfnQueue).addPropertyOverride('SqsManagedSseEnabled', true);`
+     - wrong: `encryption: sqs.QueueEncryption.KMS_MANAGED`  // synthesises KmsMasterKeyId, not SqsManagedSseEnabled
+   - **On ANY uncertainty, check the CLONED REPO — it is the source of truth, not memory and not the
+     compiler's suggestion.** Before choosing an enum member / API / prop, resolve the two questions
+     from the clone:
+     1. **Which aws-cdk version?** Read `<cdir>/node_modules/aws-cdk-lib/package.json` → `version`
+        (fallback `<cdir>/package.json` dependencies). Use **that** installed version's API — never
+        assume a newer one and never add/upgrade a dep mid-loop (Install Dependencies already ran, so a
+        bump won't install and `tsc` stays red).
+     2. **Which members actually exist?** Grep the installed type definitions for the real exports, e.g.
+        `grep -RnE 'SQS_MANAGED|KMS_MANAGED|UNENCRYPTED' node_modules/aws-cdk-lib/aws-sqs/lib/queue.d.ts`
+        (or the relevant `*.d.ts`). Use only members that appear there.
+     Then decide: if the member the **config** asks for exists in the installed version → use it; if it
+     does **not** exist → realise the config's intent via the L1 escape hatch (above), **never** the
+     compiler's "Did you mean 'X'?" suggestion (that proposes the nearest-spelled member, e.g.
+     `KMS_MANAGED` for a missing `SQS_MANAGED`, which is a *different* resource behaviour). Never invent
+     names, and never silently downgrade/substitute a config-requested value to satisfy the compiler.
 
 5. **Imports of untyped modules (`TS7016`) — match the repo's module style, do NOT add a dependency.**
    An ES import of a module with no bundled types (e.g. `js-yaml`) makes the file implicit-`any` and
@@ -123,7 +151,7 @@ Mentally run `tsc --noEmit` over every file you produced and confirm:
 
 ## Output
 This skill changes **how** you write code; it does not add an output artifact. Emit your normal
-authoring chunk/envelope for your stage. Files go under `<root>/workflow_output/`.
+authoring chunk/envelope for your stage. Files go under `<root>/src`.
 
 ## Verification
 `tsc --noEmit` passes on the files you produced, with **none** of: `TS2540`, `TS2703`, `TS18048`,
